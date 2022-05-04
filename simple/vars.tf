@@ -8,10 +8,16 @@ variable "main_vpc_cidr" {
     description = "manually setting cidr block"
     default = "10.3.0.0/16"
 }
-variable "public_subnets" {
+variable "public_subnet1" {
     type = string
     description = "manually setting cidr block"
     default = "10.3.0.0/20"
+}
+
+variable "public_subnet2" {
+    type = string
+    description = "manually setting cidr block"
+    default = "10.3.16.0/20"
 }
 /*
 variable "private_subnets" {
