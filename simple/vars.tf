@@ -6,12 +6,12 @@ variable "region" {
 variable "main_vpc_cidr" {
     type = string
     description = "manually setting cidr block"
-    default = "10.4.0.0/24"
+    default = "10.3.0.0/16"
 }
 variable "public_subnets" {
     type = string
     description = "manually setting cidr block"
-    default = "10.4.0.128/26"
+    default = "10.3.0.0/20"
 }
 /*
 variable "private_subnets" {
