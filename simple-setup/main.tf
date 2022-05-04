@@ -211,7 +211,7 @@ resource "aws_lb_target_group" "web-alb" {
   vpc_id   = aws_vpc.terraform-vpc.id
 
   health_check {
-    port     = 80
+    port     = "traffic-port"
     protocol = "HTTP"
     timeout  = 5
     interval = 10
@@ -267,7 +267,23 @@ resource "aws_instance" "terraform-instance" {
   }
 }
 
+resource "aws_eip" "terraform-eip" {
+  instance = aws_instance.terraform-instance.id
+  vpc = true
 
+  depends_on = [
+    aws_internet_gateway.IGW
+  ]
+  
+  tags = {
+    Name = "terraform-eip"
+  }
+}
+
+resource "aws_eip_association" "eip_assoc" {
+  instance_id   = aws_instance.terraform-instance.id
+  allocation_id = aws_eip.terraform-eip.id
+}
 
 /*
  #Route table for Public Subnet's
