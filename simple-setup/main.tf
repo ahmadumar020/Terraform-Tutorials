@@ -77,71 +77,6 @@ resource "aws_route_table_association" "rt-table-subnet2"{
     route_table_id = "${aws_route_table.terraform-rt-table.id}"
 }
 
-/*
-resource "aws_network_acl" "terraform-nacl" {
-  vpc_id     = aws_vpc.terraform-vpc.id
-  subnet_ids = [aws_subnet.subnet1.id,aws_subnet.subnet2.id]
-
-  # Ingress rules
- 
-  # Allow all local traffic
-  ingress {
-    protocol   = -1
-    rule_no    = 100
-    action     = "allow"
-    cidr_block = aws_vpc.terraform-vpc.cidr_block
-    from_port  = 0
-    to_port    = 0
-  }
-
-  # Allow HTTP web traffic from anywhere
-  ingress {
-    protocol   = 6
-    rule_no    = 100
-    action     = "allow"
-    cidr_block = "0.0.0.0/0"
-    from_port  = 80
-    to_port    = 80
-  }
-
-  # Allow HTTPS web traffic from anywhere
-  ingress {
-    protocol   = 6
-    rule_no    = 110
-    action     = "allow"
-    cidr_block = "0.0.0.0/0"
-    from_port  = 443
-    to_port    = 443
-  }
-
-  # Allow HTTPS web traffic from anywhere
-  ingress {
-    protocol   = 6
-    rule_no    = 120
-    action     = "allow"
-    cidr_block = "0.0.0.0/0"
-    from_port  = 22
-    to_port    = 22
-  }
-
-  # Egress rules
-  # Allow all ports, protocols, and IPs outbound
-  egress {
-    protocol   = -1
-    rule_no    = 100
-    action     = "allow"
-    cidr_block = "0.0.0.0/0"
-    from_port  = 0
-    to_port    = 0
-  }
-
-  tags = {
-    Name = "terraform-nacl"
-  }
-}
-*/
-
-
 # for declaring security group for ec2 instance resource 
 
 resource "aws_security_group" "allow_web" {
@@ -149,14 +84,6 @@ resource "aws_security_group" "allow_web" {
   description = "Allow web traffic"
   vpc_id = aws_vpc.terraform-vpc.id
 
-  ingress {
-    description = "SSH from VPC"
-    from_port   = 22
-    to_port     = 22
-    protocol    = "tcp"
-    cidr_blocks = ["0.0.0.0/0"]
-
-  }
   ingress {
     description = "HTTP from VPC"
     from_port   = 80
@@ -166,7 +93,7 @@ resource "aws_security_group" "allow_web" {
 
   }
   ingress {
-    description = "HTTP from VPC"
+    description = "HTTPS from VPC"
     from_port   = 443
     to_port     = 443
     protocol    = "tcp"
