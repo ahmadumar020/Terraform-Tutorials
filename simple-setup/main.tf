@@ -9,48 +9,131 @@ terraform {
   required_version = ">= 0.14.9"
 }
 
-resource "aws_vpc" "demo-vpc" {
+resource "aws_vpc" "terraform-vpc" {
     cidr_block = "10.3.0.0/16"
     instance_tenancy = "default"
     enable_dns_hostnames = true
     enable_dns_support = true
     tags = {
-      "name" = "demo-vpc"
+      "name" = "terraform-vpc"
     }
 }
 
 # Create Internet Gateway and attach it to VPC
  resource "aws_internet_gateway" "IGW" {    # Creating Internet Gateway
-    vpc_id =  aws_vpc.demo-vpc.id               # vpc_id will be generated after we create VPC
+    vpc_id =  aws_vpc.terraform-vpc.id               # vpc_id will be generated after we create VPC
+
+    depends_on = [
+      aws_vpc.terraform-vpc
+    ]
  }
 
-resource "aws_subnet" "publicsubnet1" {    # Creating Public Subnets
-   vpc_id =  aws_vpc.demo-vpc.id
-   cidr_block = "${var.public_subnet1}"        # CIDR block of public subnets
-   availability_zone = "ap-southeast-2a"
+resource "aws_subnet" "subnet1" {
+  vpc_id = "${aws_vpc.terraform-vpc.id}"
+  cidr_block = "10.3.0.0/20"
 
-   tags = {
-       Name = "demo-pub-subnet"
-   }
- }
+  depends_on = [
+      aws_vpc.terraform-vpc
+    ]
 
- resource "aws_subnet" "publicsubnet2" {    # Creating Public Subnets
-   vpc_id =  aws_vpc.demo-vpc.id
-   cidr_block = "${var.public_subnet2}"        # CIDR block of public subnets
-   availability_zone = "ap-southeast-2b"
+  tags = {
+    "Name" = "subnet1"
+  }
+}
 
-   tags = {
-       Name = "demo-pub-subnet1"
-   }
- }
+resource "aws_subnet" "subnet2" {
+  vpc_id = "${aws_vpc.terraform-vpc.id}"
+  cidr_block = "10.3.16.0/20"
 
+  depends_on = [
+      aws_vpc.terraform-vpc
+    ]
+
+  tags = {
+    "Name" = "subnet2"
+  }
+}
+
+# for declaring security group for ec2 instance resource 
+
+resource "aws_security_group" "allow_web" {
+  name        = "allow_web"
+  description = "Allow web traffic"
+  vpc_id = aws_vpc.terraform-vpc.id
+
+  ingress {
+    description = "SSH from VPC"
+    from_port   = 22
+    to_port     = 22
+    protocol    = "tcp"
+    cidr_blocks = ["0.0.0.0/0"]
+
+  }
+  ingress {
+    description = "HTTP from VPC"
+    from_port   = 80
+    to_port     = 80
+    protocol    = "tcp"
+    cidr_blocks = ["0.0.0.0/0"]
+
+  }
+  ingress {
+    description = "HTTP from VPC"
+    from_port   = 443
+    to_port     = 443
+    protocol    = "tcp"
+    cidr_blocks = ["0.0.0.0/0"]
+
+  }
+  egress {
+    from_port        = 0
+    to_port          = 0
+    protocol         = "-1" //any protocol
+    cidr_blocks      = ["0.0.0.0/0"]
+    ipv6_cidr_blocks = ["::/0"]
+  }
+
+  depends_on = [
+      aws_vpc.terraform-vpc
+    ]
+
+  tags = {
+    Name = "Created by Terraform"
+  }
+}
+
+
+# ALB for the web servers
+resource "aws_lb" "web-alb" {
+  name               = "web-alb"
+  internal           = false
+  load_balancer_type = "application"
+  security_groups    = [aws_security_group.allow_web.id]
+  subnets            = [aws_subnet.subnet1.id,aws_subnet.subnet2.id]
+  enable_http2       = false
+  enable_deletion_protection = false
+
+  depends_on = [
+      aws_security_group.allow_web,
+      aws_subnet.subnet1,
+      aws_subnet.subnet2
+    ]
+
+  tags = {
+    Name = "web-alb"
+  }
+}
+
+/*
  #Route table for Public Subnet's
  resource "aws_route_table" "PublicRT" {    # Creating RT for Public Subnet
-    vpc_id =  aws_vpc.demo-vpc.id
+    vpc_id =  aws_vpc.terraform-vpc.id
     route {
         cidr_block = "0.0.0.0/0"               # Traffic from Public Subnet reaches Internet via Internet Gateway
         gateway_id = aws_internet_gateway.IGW.id
      }
+
+
 
      tags = {
          Name = "demo-pub-RT"
@@ -70,7 +153,7 @@ resource "aws_route_table_association" "PublicRTassociation-subnet2" {
 resource "aws_security_group" "demo-sg" {
   name        = "demo-sg"
   description = "Demo security group"
-  vpc_id      = "${aws_vpc.demo-vpc.id}"
+  vpc_id      = "${aws_vpc.terraform-vpc.id}"
 
   # Allow outbound internet access.
   egress {
@@ -100,7 +183,7 @@ resource "aws_security_group" "demo-sg" {
 }
 
 resource "aws_network_acl" "demo-nacl" {
-  vpc_id     = aws_vpc.demo-vpc.id
+  vpc_id     = aws_vpc.terraform-vpc.id
   subnet_ids = [aws_subnet.publicsubnet1.id,aws_subnet.publicsubnet2.id]
 
   # Ingress rules
@@ -109,7 +192,7 @@ resource "aws_network_acl" "demo-nacl" {
     protocol   = -1
     rule_no    = 100
     action     = "allow"
-    cidr_block = aws_vpc.demo-vpc.cidr_block
+    cidr_block = aws_vpc.terraform-vpc.cidr_block
     from_port  = 0
     to_port    = 0
   }
