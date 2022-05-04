@@ -35,3 +35,6 @@ override.tf.json
 
 *.pem
 *.pem.*
+
+
+simple/provider.tf
