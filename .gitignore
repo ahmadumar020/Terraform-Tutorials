@@ -38,3 +38,5 @@ override.tf.json
 
 
 simple/provider.tf
+
+simple-setup/provider.tf
