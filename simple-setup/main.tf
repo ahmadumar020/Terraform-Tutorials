@@ -56,12 +56,34 @@ resource "aws_subnet" "subnet2" {
   }
 }
 
+resource "aws_route_table" "terraform-rt-table" {
+    vpc_id = "${aws_vpc.terraform-vpc.id}"
+    
+    route {
+        //associated subnet can reach everywhere
+        cidr_block = "0.0.0.0/0" 
+        //CRT uses this IGW to reach internet
+        gateway_id = "${aws_internet_gateway.IGW.id}" 
+    }
+}
+
+resource "aws_route_table_association" "rt-table-subnet1"{
+    subnet_id = "${aws_subnet.subnet1.id}"
+    route_table_id = "${aws_route_table.terraform-rt-table.id}"
+}
+
+resource "aws_route_table_association" "rt-table-subnet2"{
+    subnet_id = "${aws_subnet.subnet2.id}"
+    route_table_id = "${aws_route_table.terraform-rt-table.id}"
+}
+
+/*
 resource "aws_network_acl" "terraform-nacl" {
   vpc_id     = aws_vpc.terraform-vpc.id
   subnet_ids = [aws_subnet.subnet1.id,aws_subnet.subnet2.id]
 
   # Ingress rules
-  /*
+ 
   # Allow all local traffic
   ingress {
     protocol   = -1
@@ -70,7 +92,7 @@ resource "aws_network_acl" "terraform-nacl" {
     cidr_block = aws_vpc.terraform-vpc.cidr_block
     from_port  = 0
     to_port    = 0
-  }*/
+  }
 
   # Allow HTTP web traffic from anywhere
   ingress {
@@ -117,6 +139,8 @@ resource "aws_network_acl" "terraform-nacl" {
     Name = "terraform-nacl"
   }
 }
+*/
+
 
 # for declaring security group for ec2 instance resource 
 
@@ -240,6 +264,7 @@ resource "aws_lb_target_group_attachment" "web-alb" {
 
 resource "aws_instance" "terraform-instance" {
   ami           = "ami-0c6120f461d6b39e9"
+  associate_public_ip_address          = false
   instance_type = "t2.micro"
   vpc_security_group_ids = [aws_security_group.allow_web.id]
   #security_groups   = [aws_security_group.allow_web.name]
@@ -257,7 +282,9 @@ resource "aws_instance" "terraform-instance" {
                 sudo systemctl start httpd
                 sudo systemctl enable httpd
                 echo "
-<h1>Deployed via Terraform</h1>
+<Title>Terraform Demo</Title>
+<h1>Hello World</h1>
+<h2>Deployed via Terraform</h2>
 
 " | sudo tee /var/www/html/index.html
         EOF
@@ -284,157 +311,3 @@ resource "aws_eip_association" "eip_assoc" {
   instance_id   = aws_instance.terraform-instance.id
   allocation_id = aws_eip.terraform-eip.id
 }
-
-/*
- #Route table for Public Subnet's
- resource "aws_route_table" "PublicRT" {    # Creating RT for Public Subnet
-    vpc_id =  aws_vpc.terraform-vpc.id
-    route {
-        cidr_block = "0.0.0.0/0"               # Traffic from Public Subnet reaches Internet via Internet Gateway
-        gateway_id = aws_internet_gateway.IGW.id
-     }
-
-
-
-     tags = {
-         Name = "demo-pub-RT"
-     }
- }
- #Route table Association with Public Subnet's
- resource "aws_route_table_association" "PublicRTassociation-subnet1" {
-    subnet_id = aws_subnet.publicsubnet1.id
-    route_table_id = aws_route_table.PublicRT.id
- }
-resource "aws_route_table_association" "PublicRTassociation-subnet2" {
-    subnet_id = aws_subnet.publicsubnet2.id
-    route_table_id = aws_route_table.PublicRT.id
- }
-
-
-resource "aws_security_group" "demo-sg" {
-  name        = "demo-sg"
-  description = "Demo security group"
-  vpc_id      = "${aws_vpc.terraform-vpc.id}"
-
-  # Allow outbound internet access.
-  egress {
-    from_port   = 0
-    to_port     = 0
-    protocol    = "-1"
-    cidr_blocks = ["0.0.0.0/0"]
-  }
-
-  ingress {
-    from_port   = 443
-    to_port     = 443
-    protocol    = "tcp"
-    cidr_blocks = ["0.0.0.0/0"]
-  }
-
-  ingress {
-    from_port   = 80
-    to_port     = 80
-    protocol    = "tcp"
-    cidr_blocks = ["0.0.0.0/0"]
-  }
-
-  tags = {
-    Name = "demo-sg"
-  }
-}
-
-resource "aws_network_acl" "demo-nacl" {
-  vpc_id     = aws_vpc.terraform-vpc.id
-  subnet_ids = [aws_subnet.publicsubnet1.id,aws_subnet.publicsubnet2.id]
-
-  # Ingress rules
-  # Allow all local traffic
-  ingress {
-    protocol   = -1
-    rule_no    = 100
-    action     = "allow"
-    cidr_block = aws_vpc.terraform-vpc.cidr_block
-    from_port  = 0
-    to_port    = 0
-  }
-
-  # Allow HTTP web traffic from anywhere
-  ingress {
-    protocol   = 6
-    rule_no    = 105
-    action     = "allow"
-    cidr_block = "0.0.0.0/0"
-    from_port  = 80
-    to_port    = 80
-  }
-
-  # Allow HTTPS web traffic from anywhere
-  ingress {
-    protocol   = 6
-    rule_no    = 110
-    action     = "allow"
-    cidr_block = "0.0.0.0/0"
-    from_port  = 443
-    to_port    = 443
-  }
-
-  # Allow HTTPS web traffic from anywhere
-  ingress {
-    protocol   = 6
-    rule_no    = 120
-    action     = "allow"
-    cidr_block = "0.0.0.0/0"
-    from_port  = 22
-    to_port    = 22
-  }
-
-  # Egress rules
-  # Allow all ports, protocols, and IPs outbound
-  egress {
-    protocol   = -1
-    rule_no    = 100
-    action     = "allow"
-    cidr_block = "0.0.0.0/0"
-    from_port  = 0
-    to_port    = 0
-  }
-
-  tags = {
-    Name = "demo-nacl"
-  }
-}
-
-
-## ami-0c6120f461d6b39e9 (Amazon Linux 2 AMI)
-## instance type is t2.micro (free tier)
-
-resource "aws_instance" "terraform-instance" {
-  ami           = "ami-0c6120f461d6b39e9"
-  instance_type = "t2.micro"
-  key_name          = "demo-key-pair"
-  security_groups   = [aws_security_group.demo-sg.name]
-  user_data         = <<-EOF
-                #! /bin/bash
-                sudo yum update
-                sudo yum install -y httpd
-                sudo systemctl start httpd
-                sudo systemctl enable httpd
-                echo "
-<h1>Deployed via Terraform</h1>
-
-" | sudo tee /var/www/html/index.html
-        EOF
-
-  tags = {
-    Name = "terraform-instance"
-  }
-}
-/*
-
-resource "aws_lb_target_group_attachment" "demo-alb-attach" {
-  target_group_arn = "${aws_alb_target_group.demo-group.arn}"
-  target_id        = aws_instance.terraform-instance.id
-  port             = 80
-}
-
-*/
